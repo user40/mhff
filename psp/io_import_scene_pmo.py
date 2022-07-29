@@ -4,6 +4,7 @@ import struct
 import bpy
 import bmesh
 import mathutils
+from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty
 
 
@@ -177,7 +178,7 @@ def create_mesh(mesh, num):
     bm.from_mesh(me)
     dl = bm.verts.layers.deform.new()
     for i in range(len(mesh)):
-        vg = ob.vertex_groups.new('VertexGroup%04d' % i)
+        vg = ob.vertex_groups.new(name=f'VertexGroup{i:04d}')
         for j in range(len(mesh[i][0])):
             mesh[i][0][j] = bm.verts.new(mesh[i][0][j])
         for face in mesh[i][5]:
@@ -186,7 +187,7 @@ def create_mesh(mesh, num):
                 vert[dl][i] = 1.0
     bm.to_mesh(me)
     bm.free()
-    bpy.context.scene.objects.link(ob)
+    bpy.context.collection.objects.link(ob)
 
 
 def load_pmo_mh3(pmo):
@@ -233,14 +234,14 @@ bl_info = {
         'name': 'Import Monster Hunter Objects',
         'author': 'Seth VanHeulen',
         'version': (0, 1),
-        'blender': (2, 69, 0),
+        'blender': (2, 80, 0),
         'location': 'File > Import > Monster Hunter Object (.pmo)',
         'description': 'Imports a PMO object from Monster Hunter',
         'category': 'Import-Export'
 }
 
 
-class IMPORT_OT_pmo(bpy.types.Operator):
+class IMPORT_OT_pmo(bpy.types.Operator, ImportHelper):
     bl_idname = 'import_scene.pmo'
     bl_label = 'Import PMO'
     bl_description = 'Import a Monster Hunter PMO file'
@@ -262,13 +263,13 @@ def menu_func(self, context):
 
 
 def register():
-    bpy.utils.register_module(__name__)
-    bpy.types.INFO_MT_file_import.append(menu_func)
+    bpy.utils.register_class(IMPORT_OT_pmo)
+    bpy.types.TOPBAR_MT_file_import.append(menu_func)
 
 
 def unregister():
-    bpy.utils.unregister_module(__name__)
-    bpy.types.INFO_MT_file_import.remove(menu_func)
+    bpy.utils.unregister_class(IMPORT_OT_pmo)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func)
 
 
 if __name__ == '__main__':
