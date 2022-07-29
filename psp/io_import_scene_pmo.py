@@ -1,4 +1,5 @@
 import array
+from dataclasses import dataclass
 import struct
 
 import bpy
@@ -8,6 +9,15 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty
 
 
+@dataclass
+class SubMeshInfo:
+    vertices: dict
+    normals:dict
+    uvs: dict
+    colors: dict
+    weights:dict
+    faces: dict
+    
 def convert_rgb565(i):
     r = round((i & 31) * (255 / 31))
     g = round((i >> 5 & 63) * (255 / 63))
@@ -168,23 +178,29 @@ def run_ge(pmo):
             face_order = command & 1 # TODO: handle face culling
         else:
             raise ValueError('Unknown GE command: 0x%02X' % command_type)
-    return vertices, normals, uvs, colors, weights, faces
+    return SubMeshInfo(vertices, normals, uvs, colors, weights, faces)
 
 
-def create_mesh(mesh, num):
+def create_mesh(mesh, num, bones):
     me = bpy.data.meshes.new('Mesh%04d' % num)
     ob = bpy.data.objects.new('Mesh%04d' % num, me)
+    BONE_NUM = 50
+    vgs = []
+    for k in range(BONE_NUM):
+        vgs.append(ob.vertex_groups.new(name=f'Bone{k:02d}'))
     bm = bmesh.new()
     bm.from_mesh(me)
-    dl = bm.verts.layers.deform.new()
-    for i in range(len(mesh)):
-        vg = ob.vertex_groups.new(name=f'VertexGroup{i:04d}')
-        for j in range(len(mesh[i][0])):
-            mesh[i][0][j] = bm.verts.new(mesh[i][0][j])
-        for face in mesh[i][5]:
-            face = bm.faces.new((mesh[i][0][face[0]], mesh[i][0][face[1]], mesh[i][0][face[2]]))
-            for vert in face.verts:
-                vert[dl][i] = 1.0
+    bm.verts.layers.deform.verify()
+    dl = bm.verts.layers.deform.active
+    for submesh, bone in zip(mesh, bones):
+        vs = {}
+        for j, v in submesh.vertices.items():
+            vs[j] = bm.verts.new(v)
+        for face in submesh.faces:
+            face = bm.faces.new((vs[face[0]], vs[face[1]], vs[face[2]]))
+        for j, ws in submesh.weights.items():
+            for w, b in zip(ws, bone):
+                vs[j][dl][b] = w/128
     bm.to_mesh(me)
     bm.free()
     bpy.context.collection.objects.link(ob)
@@ -207,17 +223,25 @@ def load_pmo_mh3(pmo):
 
 def load_pmo_mh2(pmo):
     pmo_header = struct.unpack('I4f2H8I', pmo.read(0x38))
+    bone = [0] * 8
     for i in range(pmo_header[5]):
         pmo.seek(pmo_header[7] + i * 0x18)
         mesh_header = struct.unpack('2f2I4H', pmo.read(0x18))
         mesh = []
+        bones = []
         for j in range(mesh_header[6]):
             pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
-            vertex_group_header = struct.unpack('2BH3I', pmo.read(0x10))
-            pmo.seek(pmo_header[12] + vertex_group_header[3])
-            vertex_group = run_ge(pmo)
-            mesh.append(vertex_group)
-        create_mesh(mesh, i)
+            sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
+            pmo.seek(pmo_header[12] + sub_mesh_header[3])
+            sub_mesh = run_ge(pmo)
+            mesh.append(sub_mesh)
+            
+            pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
+            for _ in range(sub_mesh_header[1]):
+                k, l = struct.unpack('2B', pmo.read(0x2))
+                bone[k] = l
+            bones.append(bone.copy())
+        create_mesh(mesh, i, bones)
 
 
 def load_pmo(pmo_file):
