@@ -188,6 +188,14 @@ def run_ge(pmo, scale=(1, 1, 1)):
     return SubMeshInfo(vertices, normals, uvs, colors, weights, faces)
 
 
+def change_coordinate_system(info: SubMeshInfo, scale):
+    for v in info.vertices.values():
+        v.xyz = v.zxy * scale
+    for n in info.vertices.values():
+        n.xyz = n.zxy
+    return info
+
+
 def create_mesh(mesh, num, bones):
     me = bpy.data.meshes.new('Mesh%04d' % num)
     ob = bpy.data.objects.new('Mesh%04d' % num, me)
@@ -228,9 +236,9 @@ def load_pmo_mh3(pmo):
         create_mesh(mesh, i)
 
 
-def load_pmo_mh2(pmo, user_scale):
+def load_pmo_mh2(pmo, blender_scale):
     pmo_header = struct.unpack('I4f2H8I', pmo.read(0x38))
-    scale = mathutils.Vector(pmo_header[2:5]) * user_scale
+    scale = mathutils.Vector(pmo_header[2:5])
     bone = [0] * 8
     for i in range(pmo_header[5]):
         pmo.seek(pmo_header[7] + i * 0x18)
@@ -241,7 +249,8 @@ def load_pmo_mh2(pmo, user_scale):
             pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
             sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
             pmo.seek(pmo_header[12] + sub_mesh_header[3])
-            sub_mesh = run_ge(pmo, scale)
+            sub_mesh = change_coordinate_system(
+                run_ge(pmo, scale), blender_scale)
             mesh.append(sub_mesh)
 
             pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
