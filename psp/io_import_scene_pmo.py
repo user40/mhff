@@ -12,12 +12,13 @@ from bpy.props import StringProperty
 @dataclass
 class SubMeshInfo:
     vertices: dict
-    normals:dict
+    normals: dict
     uvs: dict
     colors: dict
-    weights:dict
+    weights: dict
     faces: dict
-    
+
+
 def convert_rgb565(i):
     r = round((i & 31) * (255 / 31))
     g = round((i >> 5 & 63) * (255 / 63))
@@ -46,7 +47,7 @@ def convert_rgba8(i):
     return mathutils.Color((r, g, b))
 
 
-def run_ge(pmo):
+def run_ge(pmo, scale=(1, 1, 1)):
     file_address = pmo.tell()
     index_offset = 0
     vertices = {}
@@ -84,7 +85,8 @@ def run_ge(pmo):
             primative_type = (command >> 16) & 7
             index_count = command & 0xffff
             command_address = pmo.tell()
-            index = range(len(vertices) - index_offset, len(vertices) + index_count - index_offset)
+            index = range(len(vertices) - index_offset,
+                          len(vertices) + index_count - index_offset)
             if index_format is not None:
                 index = array.array(index_format)
                 pmo.seek(index_address)
@@ -93,11 +95,12 @@ def run_ge(pmo):
             vertex_size = struct.calcsize(vertex_format)
             for i in index:
                 pmo.seek(vertex_address + vertex_size * i)
-                vertex = list(struct.unpack(vertex_format, pmo.read(vertex_size)))
+                vertex = list(struct.unpack(
+                    vertex_format, pmo.read(vertex_size)))
                 position = mathutils.Vector()
-                position.z = vertex.pop() / position_trans
-                position.y = vertex.pop() / position_trans
-                position.x = vertex.pop() / position_trans
+                position.z = vertex.pop() / position_trans * scale[2]
+                position.y = vertex.pop() / position_trans * scale[1]
+                position.x = vertex.pop() / position_trans * scale[0]
                 vertices[i + index_offset] = position
                 if normal_trans is not None:
                     normal = mathutils.Vector()
@@ -119,7 +122,8 @@ def run_ge(pmo):
             if primative_type == 3:
                 r = range(0, index_count, 3)
             elif primative_type != 4:
-                ValueError('Unsupported primative type: 0x%02X' % primative_type)
+                ValueError('Unsupported primative type: 0x%02X' %
+                           primative_type)
             for i in r:
                 vert1 = index[i] + index_offset
                 vert2 = index[i+1] + index_offset
@@ -148,8 +152,10 @@ def run_ge(pmo):
                     texture_trans = (None, 0x80, 0x8000, 1)[texture]
             color = (command >> 2) & 7
             if color != 0:
-                vertex_format += (None, None, None, None, 'H', 'H', 'H', 'I')[color]
-                color_trans = (None, None, None, None, convert_rgb565, convert_rgba5, convert_rgba4, convert_rgba8)[color]
+                vertex_format += (None, None, None, None,
+                                  'H', 'H', 'H', 'I')[color]
+                color_trans = (None, None, None, None, convert_rgb565,
+                               convert_rgba5, convert_rgba4, convert_rgba8)[color]
             normal = (command >> 5) & 3
             if normal != 0:
                 vertex_format += (None, '3b', '3h', '3f')[normal]
@@ -159,7 +165,8 @@ def run_ge(pmo):
             position = (command >> 7) & 3
             if position != 0:
                 if bypass_transform:
-                    vertex_format += (None, '2bB', '2hH', '3f')[position] # TODO: handle Z clamping
+                    # TODO: handle Z clamping
+                    vertex_format += (None, '2bB', '2hH', '3f')[position]
                     position_trans = 1
                 else:
                     vertex_format += (None, '3b', '3h', '3f')[position]
@@ -175,7 +182,7 @@ def run_ge(pmo):
             pass
         # FFACE - Front Face Culling Order
         elif command_type == 0x9b:
-            face_order = command & 1 # TODO: handle face culling
+            face_order = command & 1  # TODO: handle face culling
         else:
             raise ValueError('Unknown GE command: 0x%02X' % command_type)
     return SubMeshInfo(vertices, normals, uvs, colors, weights, faces)
@@ -221,8 +228,9 @@ def load_pmo_mh3(pmo):
         create_mesh(mesh, i)
 
 
-def load_pmo_mh2(pmo):
+def load_pmo_mh2(pmo, user_scale):
     pmo_header = struct.unpack('I4f2H8I', pmo.read(0x38))
+    scale = mathutils.Vector(pmo_header[2:5]) * user_scale
     bone = [0] * 8
     for i in range(pmo_header[5]):
         pmo.seek(pmo_header[7] + i * 0x18)
@@ -233,9 +241,9 @@ def load_pmo_mh2(pmo):
             pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
             sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
             pmo.seek(pmo_header[12] + sub_mesh_header[3])
-            sub_mesh = run_ge(pmo)
+            sub_mesh = run_ge(pmo, scale)
             mesh.append(sub_mesh)
-            
+
             pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
             for _ in range(sub_mesh_header[1]):
                 k, l = struct.unpack('2B', pmo.read(0x2))
@@ -250,19 +258,20 @@ def load_pmo(pmo_file):
         if type == b'pmo\x00' and version == b'102\x00':
             load_pmo_mh3(pmo)
         elif type == b'pmo\x00' and version == b'1.0\x00':
-            load_pmo_mh2(pmo)
+            SCALE = 0.01
+            load_pmo_mh2(pmo, SCALE)
         else:
             raise ValueError('Invalid PMO file')
 
 
 bl_info = {
-        'name': 'Import Monster Hunter Objects',
-        'author': 'Seth VanHeulen',
-        'version': (0, 1),
-        'blender': (2, 80, 0),
-        'location': 'File > Import > Monster Hunter Object (.pmo)',
-        'description': 'Imports a PMO object from Monster Hunter',
-        'category': 'Import-Export'
+    'name': 'Import Monster Hunter Objects',
+    'author': 'Seth VanHeulen',
+    'version': (0, 1),
+    'blender': (2, 80, 0),
+    'location': 'File > Import > Monster Hunter Object (.pmo)',
+    'description': 'Imports a PMO object from Monster Hunter',
+    'category': 'Import-Export'
 }
 
 
@@ -271,7 +280,8 @@ class IMPORT_OT_pmo(bpy.types.Operator, ImportHelper):
     bl_label = 'Import PMO'
     bl_description = 'Import a Monster Hunter PMO file'
     bl_options = {'REGISTER', 'UNDO'}
-    filepath = StringProperty(name='File Path', description='File path used for importing the PMO file', maxlen=1024, default='')
+    filepath = StringProperty(
+        name='File Path', description='File path used for importing the PMO file', maxlen=1024, default='')
 
     def execute(self, context):
         load_pmo(self.filepath)
@@ -284,7 +294,8 @@ class IMPORT_OT_pmo(bpy.types.Operator, ImportHelper):
 
 
 def menu_func(self, context):
-    self.layout.operator(IMPORT_OT_pmo.bl_idname, text='Monster Hunter Object (.pmo)')
+    self.layout.operator(IMPORT_OT_pmo.bl_idname,
+                         text='Monster Hunter Object (.pmo)')
 
 
 def register():
@@ -299,4 +310,3 @@ def unregister():
 
 if __name__ == '__main__':
     register()
-
