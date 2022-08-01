@@ -18,6 +18,11 @@ class SubMeshInfo:
     weights: dict
     faces: dict
 
+    def to_blender_coord(info, scale):
+        vs = {k: v.zxy * scale for k, v in info.vertices.items()}
+        ns = {k: n.zxy for k, n in info.vertices.items()}
+        return SubMeshInfo(vs, ns, info.uvs, info.colors, info.weights, info.faces)
+
 
 def convert_rgb565(i):
     r = round((i & 31) * (255 / 31))
@@ -188,21 +193,13 @@ def run_ge(pmo, scale=(1, 1, 1)):
     return SubMeshInfo(vertices, normals, uvs, colors, weights, faces)
 
 
-def change_coordinate_system(info: SubMeshInfo, scale):
-    for v in info.vertices.values():
-        v.xyz = v.zxy * scale
-    for n in info.vertices.values():
-        n.xyz = n.zxy
-    return info
-
-
 def create_mesh(mesh, num, bones):
     me = bpy.data.meshes.new('Mesh%04d' % num)
     ob = bpy.data.objects.new('Mesh%04d' % num, me)
     BONE_NUM = 50
     vgs = []
     for k in range(BONE_NUM):
-        vgs.append(ob.vertex_groups.new(name=f'Bone{k:02d}'))
+        vgs.append(ob.vertex_groups.new(name=f'Bone{k:03d}'))
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.verts.layers.deform.verify()
@@ -249,8 +246,7 @@ def load_pmo_mh2(pmo, blender_scale):
             pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
             sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
             pmo.seek(pmo_header[12] + sub_mesh_header[3])
-            sub_mesh = change_coordinate_system(
-                run_ge(pmo, scale), blender_scale)
+            sub_mesh = run_ge(pmo, scale).to_blender_coord(blender_scale)
             mesh.append(sub_mesh)
 
             pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
