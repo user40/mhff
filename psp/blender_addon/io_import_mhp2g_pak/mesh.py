@@ -4,22 +4,21 @@ from collections import defaultdict
 from itertools import chain
 from mathutils import Vector
 from structures import MeshData, SubMeshInfo
+import names
 
 
 def create(meshes_data: list[MeshData], name):
     mesh_groups = defaultdict(list)
     for i, m in enumerate(meshes_data):
         for j, submesh in enumerate(m.mesh):
-            name = f'Mesh{i:04d}_{j:03d}'
-            obj = create_mesh(name, submesh)
-            set_material(obj, m.materials[j])
+            obj = create_mesh(submesh, names.mesh_tmp(name, i, j))
+            set_material(obj, m.materials[j], name)
             set_weight(obj, submesh.weights, m.bones[j])
-            print(mesh_groups)
             mesh_groups[m.mesh_groups[j]].append(obj)
-    return join_meshes(mesh_groups)
+    return join_meshes(mesh_groups, name)
 
 
-def create_mesh(name, mesh_data):
+def create_mesh(mesh_data, name):
     data = mesh_data.to_blender_coord(scale=0.01)
 
     # Create a mesh and a mesh obj
@@ -40,16 +39,17 @@ def create_mesh(name, mesh_data):
     return obj
 
 
-def set_material(obj, material):
+def set_material(obj, material, name):
     # Set material
-    obj.active_material = bpy.data.materials[f'Material{material:02d}']
+    obj.active_material = bpy.data.materials[names.material(name, material)]
     return obj
 
 
 def set_weight(obj, weights, bone_list):
+    TOTAL_WEIGHT = 128
     for v, ws in weights.items():
         for weight, bone in zip(ws, bone_list):
-            name = f'Bone{bone:03d}'
+            name = names.bone(bone)
             if not name in obj.vertex_groups:
                 obj.vertex_groups.new(name=name)
             obj.vertex_groups[name].add([v], weight/TOTAL_WEIGHT, 'REPLACE')
@@ -58,14 +58,14 @@ def set_weight(obj, weights, bone_list):
 TOTAL_WEIGHT = 128
 
 
-def join_meshes(mesh_groups):
-    bpy.ops.object.mode_set(mode='OBJECT')
+def join_meshes(mesh_groups, name):
     result = []
     for id, meshes in mesh_groups.items():
+        print(id, meshes)
         ctx = bpy.context.copy()
         ctx['active_object'] = meshes[0]
         ctx['selected_editable_objects'] = meshes
         bpy.ops.object.join(ctx)
-        meshes[0].name = f'Mesh{id:02d}'
+        meshes[0].name = names.mesh(name, id)
         result.append(meshes[0])
     return result

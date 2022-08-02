@@ -7,6 +7,7 @@ from tmh import Tmh
 from pak3 import Pak3
 import armature
 import action
+import material
 import mesh
 from itertools import product
 
@@ -23,13 +24,10 @@ def load_pak(filepath):
 
     skelton_data = Pak0(pak0).read()
     mesh_data = Pmo(pmo).read()
-    texture_data = Tmh(tmh).read(outpath)
+    texture_data = Tmh(tmh).read()
     animation_data = Pak3(pak3).read()
 
-    # TEST
-    for i in range(6):
-        bpy.data.materials.new(name=f'Material{i:02d}')
-
+    materials = material.create(texture_data, name)
     meshes = mesh.create(mesh_data, name)
 
     if skelton_data:

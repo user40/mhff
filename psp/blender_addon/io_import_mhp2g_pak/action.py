@@ -6,9 +6,10 @@ from structures import (
     SkeltonData
 )
 import utils
+import names
 
 def create(action_data: MHAction, action_id: int, skelton_data: SkeltonData, name: str):
-    action = bpy.data.actions.new(f'Action_{name}_{action_id:03d}')
+    action = bpy.data.actions.new(names.action(name, action_id))
     action.use_fake_user = True
 
     subskelton_id = get_subskelton_id(action_id)
@@ -25,7 +26,7 @@ def set_fcurves(action, joint_data: Joint, bone_idx):
     for c in joint_data.channels:
         # Add a Fcurve
         data_path, index, coeff = channel_data[c.channel]
-        data_path = f'pose.bones["Bone{bone_idx:03d}"]' + data_path
+        data_path = f'pose.bones["{names.bone(bone_idx)}"]' + data_path
         fcurve = action.fcurves.new(data_path, index=index)
         
         is_first = True

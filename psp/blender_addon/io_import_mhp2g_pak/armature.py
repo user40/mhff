@@ -1,6 +1,7 @@
 import bpy
 from mathutils import Vector
 import utils
+import names
 
 
 def create(skelton_data, name):
@@ -8,10 +9,10 @@ def create(skelton_data, name):
     bpy.ops.object.add(type='ARMATURE', enter_editmode=True,
                        location=(0, 0, 0))
     amt = bpy.context.object
-    amt.name = f'Armature_{name}'
+    amt.name = names.armature(name)
 
     # Create bones
-    bone_names = [f'Bone{i:03d}' for i in range(len(skelton_data))]
+    bone_names = [names.bone(i) for i in range(len(skelton_data))]
     for name in bone_names:
         create_bone(amt, name)
 
