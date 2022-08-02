@@ -26,11 +26,11 @@ def create(skelton_data, name):
             b.parent = amt.data.edit_bones[bone_names[d.parent_idx]]
             b.head = b.head + b.parent.head
             b.tail = b.tail + b.parent.head
-    
+
     # Set relationship
     for name in bone_names:
         b = amt.data.edit_bones[name]
-        b.inherit_scale='ALIGNED'
+        b.inherit_scale = 'ALIGNED'
 
     bpy.ops.object.mode_set(mode='OBJECT')
     return amt

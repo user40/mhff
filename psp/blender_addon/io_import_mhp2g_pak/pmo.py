@@ -30,7 +30,7 @@ class Pmo:
         for i in range(pmo_header[5]):
             pmo.seek(pmo_header[7] + i * 0x18)
             mesh_header = struct.unpack('2f2I4H', pmo.read(0x18))
-            mesh, bones, materials = [], [], [],
+            mesh, mesh_groups, bones, materials = [], [], [], []
             for j in range(mesh_header[6]):
                 pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
                 sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
@@ -50,10 +50,11 @@ class Pmo:
                 #
                 pmo.seek(pmo_header[9] + mesh_header[5] + sub_mesh_header[0])
                 mesh_group = struct.unpack('B', pmo.read(1))[0]
+                mesh_groups.append(mesh_group)
                 pmo.seek(pmo_header[11] + mesh_group * 0x10)
                 material = struct.unpack('4I', pmo.read(16))[2]
                 materials.append(material)
-            meshes_data.append(MeshData(mesh, i, bones, materials))
+            meshes_data.append(MeshData(mesh, mesh_groups, bones, materials))
         return meshes_data
 
     def run_ge(self, scale=(1, 1, 1)):

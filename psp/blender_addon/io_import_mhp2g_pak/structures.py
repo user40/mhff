@@ -113,6 +113,6 @@ class SubMeshInfo:
 @dataclass
 class MeshData:
     mesh: list[SubMeshInfo]
-    index: int
+    mesh_groups: list[int]
     bones: list[list[int]]
     materials: list[int]

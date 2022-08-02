@@ -130,9 +130,13 @@ def run_ge(pmo, scale=(1, 1, 1)):
                 ValueError('Unsupported primative type: 0x%02X' %
                            primative_type)
             for i in r:
-                vert1 = index[i] + index_offset
-                vert2 = index[i+1] + index_offset
                 vert3 = index[i+2] + index_offset
+                if ((i + face_order) % 2) or ((primative_type == 3) and face_order):
+                    vert2 = index[i] + index_offset
+                    vert1 = index[i+1] + index_offset
+                else:
+                    vert1 = index[i] + index_offset
+                    vert2 = index[i+1] + index_offset
                 faces.append((vert1, vert2, vert3))
         # RET - Return from Call
         elif command_type == 0x0b:
