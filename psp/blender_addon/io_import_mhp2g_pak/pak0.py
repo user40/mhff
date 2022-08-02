@@ -1,5 +1,5 @@
 from structures import SkeltonData, JointData
-from memory import Memory
+from utils import Memory
 
 
 class Pak0:

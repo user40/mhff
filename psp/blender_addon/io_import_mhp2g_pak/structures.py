@@ -102,7 +102,7 @@ class SubMeshInfo:
     uvs: dict
     colors: dict
     weights: dict
-    faces: dict
+    faces: list
 
     def to_blender_coord(self, scale):
         vs = {k: v.zxy * scale for k, v in self.vertices.items()}
@@ -115,3 +115,4 @@ class MeshData:
     mesh: list[SubMeshInfo]
     index: int
     bones: list[list[int]]
+    materials: list[int]

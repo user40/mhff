@@ -26,18 +26,14 @@ def create(skelton_data, name):
             b.parent = amt.data.edit_bones[bone_names[d.parent_idx]]
             b.head = b.head + b.parent.head
             b.tail = b.tail + b.parent.head
-
-    # Set meta data
-    bpy.ops.object.mode_set(mode='POSE')
-    for i, d in enumerate(skelton_data):
-        b = amt.pose.bones[bone_names[i]]
-        b['parent'] = d.parent_idx
-        b['child'] = d.child_idx
-        b['sibling'] = d.sibling_idx
-        b['subskelton_id'] = d.subskelton_id
+    
+    # Set relationship
+    for name in bone_names:
+        b = amt.data.edit_bones[name]
+        b.inherit_scale='ALIGNED'
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    return amt.name
+    return amt
 
 
 def create_bone(armature, name):

@@ -1,6 +1,6 @@
 import io
 from dataclasses import dataclass
-from memory import Memory
+from utils import Memory
 
 
 class Pak:

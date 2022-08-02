@@ -30,21 +30,30 @@ class Pmo:
         for i in range(pmo_header[5]):
             pmo.seek(pmo_header[7] + i * 0x18)
             mesh_header = struct.unpack('2f2I4H', pmo.read(0x18))
-            mesh = []
-            bones = []
+            mesh, bones, materials = [], [], [],
             for j in range(mesh_header[6]):
                 pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
                 sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
+                # submesh
                 pmo.seek(pmo_header[12] + sub_mesh_header[3])
                 sub_mesh = self.run_ge(scale)
                 mesh.append(sub_mesh)
-
+                # bone
                 pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
                 for _ in range(sub_mesh_header[1]):
                     k, l = struct.unpack('2B', pmo.read(0x2))
                     bone[k] = l
                 bones.append(bone.copy())
-            meshes_data.append(MeshData(mesh, i, bones))
+                # material
+                #material = struct.unpack('4I', pmo.read(16))[2]
+                # pmo_header[11] -> mesh_group_tbl
+                #
+                pmo.seek(pmo_header[9] + mesh_header[5] + sub_mesh_header[0])
+                mesh_group = struct.unpack('B', pmo.read(1))[0]
+                pmo.seek(pmo_header[11] + mesh_group * 0x10)
+                material = struct.unpack('4I', pmo.read(16))[2]
+                materials.append(material)
+            meshes_data.append(MeshData(mesh, i, bones, materials))
         return meshes_data
 
     def run_ge(self, scale=(1, 1, 1)):
@@ -126,9 +135,13 @@ class Pmo:
                     ValueError('Unsupported primative type: 0x%02X' %
                                primative_type)
                 for i in r:
-                    vert1 = index[i] + index_offset
-                    vert2 = index[i+1] + index_offset
                     vert3 = index[i+2] + index_offset
+                    if ((i + face_order) % 2) or ((primative_type == 3) and face_order):
+                        vert2 = index[i] + index_offset
+                        vert1 = index[i+1] + index_offset
+                    else:
+                        vert1 = index[i] + index_offset
+                        vert2 = index[i+1] + index_offset
                     faces.append((vert1, vert2, vert3))
             # RET - Return from Call
             elif command_type == 0x0b:
@@ -183,7 +196,7 @@ class Pmo:
                 pass
             # FFACE - Front Face Culling Order
             elif command_type == 0x9b:
-                face_order = command & 1  # TODO: handle face culling
+                face_order = command & 1
             else:
                 raise ValueError('Unknown GE command: 0x%02X' % command_type)
         return SubMeshInfo(vertices, normals, uvs, colors, weights, faces)

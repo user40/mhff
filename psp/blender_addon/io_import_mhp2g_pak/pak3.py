@@ -6,7 +6,7 @@ from structures import (
     Joint,
     MHAction,
 )
-from memory import Memory
+from utils import Memory
 
 
 class Pak3:

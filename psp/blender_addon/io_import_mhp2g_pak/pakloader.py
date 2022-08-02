@@ -8,7 +8,7 @@ from pak3 import Pak3
 import armature
 import action
 import mesh
-
+from itertools import product
 
 def load_pak(filepath):
     name = get_name(filepath)
@@ -25,14 +25,22 @@ def load_pak(filepath):
     texture_data = Tmh(tmh).read(outpath)
     animation_data = Pak3(pak3).read()
 
-    armature_name = armature.create(skelton_data, name)
-    meshes = mesh.create(mesh_data, texture_data, skelton_data, name)
-    for id, action_data in animation_data.items():
-        action.create(action_data, id, skelton_data, name)
+    # TEST
+    for i in range(6):
+        bpy.data.materials.new(name=f'Material{i:02d}')
     
-    amt = bpy.data.objects[armature_name]
-    for mesh_ in meshes:
-        mesh_.parent = amt
+    meshes = mesh.create(mesh_data, texture_data, skelton_data, name)
+    
+    if skelton_data:
+        amt = armature.create(skelton_data, name)
+        for mesh_ in meshes:
+            mesh_.modifiers.new('Armature', type='ARMATURE')
+            mesh_.modifiers["Armature"].object = amt
+            mesh_.parent = amt
+    
+    if animation_data:
+        for id, action_data in animation_data.items():
+            action.create(action_data, id, skelton_data, name)        
 
 
 def get_name(filepath):
