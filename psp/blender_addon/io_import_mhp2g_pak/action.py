@@ -60,13 +60,13 @@ def get_subskelton_id(action_id):
 
 
 channel_data = dict([
-    (pak3.ChannelFlag.SCALE_X, ('scale', 1, 1.0)),
+    (pak3.ChannelFlag.SCALE_X, ('scale', 0, 1.0)),
     (pak3.ChannelFlag.SCALE_Y, ('scale', 2, 1.0)),
-    (pak3.ChannelFlag.SCALE_Z, ('scale', 0, 1.0)),
-    (pak3.ChannelFlag.EULER_X, ('rotation_euler', 1, 1.0)),
+    (pak3.ChannelFlag.SCALE_Z, ('scale', 1, 1.0)),
+    (pak3.ChannelFlag.EULER_X, ('rotation_euler', 0, 1.0)),
     (pak3.ChannelFlag.EULER_Y, ('rotation_euler', 2, 1.0)),
-    (pak3.ChannelFlag.EULER_Z, ('rotation_euler', 0, 1.0)),
-    (pak3.ChannelFlag.TRANSLATION_X, ('location', 1, 0.01)),
+    (pak3.ChannelFlag.EULER_Z, ('rotation_euler', 1, -1.0)),
+    (pak3.ChannelFlag.TRANSLATION_X, ('location', 0, 0.01)),
     (pak3.ChannelFlag.TRANSLATION_Y, ('location', 2, 0.01)),
-    (pak3.ChannelFlag.TRANSLATION_Z, ('location', 0, 0.01)), ]
-)
+    (pak3.ChannelFlag.TRANSLATION_Z, ('location', 1, -0.01)),
+])

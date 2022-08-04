@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum, IntFlag
 from collections.abc import Iterator
+from utils import to_blender_location
 
 
 class SkeltonData(list):
@@ -104,9 +105,9 @@ class SubMeshInfo:
     weights: dict
     faces: list
 
-    def to_blender_coord(self, scale):
-        vs = {k: v.zxy * scale for k, v in self.vertices.items()}
-        ns = {k: n.zxy for k, n in self.vertices.items()}
+    def to_blender_coord(self):
+        vs = {k: to_blender_location(v)  for k, v in self.vertices.items()}
+        ns = {k: to_blender_location(n) for k, n in self.vertices.items()}
         return SubMeshInfo(vs, ns, self.uvs, self.colors, self.weights, self.faces)
 
 

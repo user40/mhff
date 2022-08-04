@@ -20,9 +20,9 @@ def create(skelton_data, name):
     bpy.ops.object.mode_set(mode='EDIT')
     for i, d in enumerate(skelton_data):
         b = amt.data.edit_bones[bone_names[i]]
-        location = Vector(utils.to_blender_location(d.location))
-        b.head = b.head + Vector(location)
-        b.tail = b.tail + Vector(location)
+        location = utils.to_blender_location(d.location)
+        b.head = b.head + location
+        b.tail = b.tail + location
         if d.parent_idx != -1:
             b.parent = amt.data.edit_bones[bone_names[d.parent_idx]]
             b.head = b.head + b.parent.head
@@ -47,7 +47,7 @@ def create_bone(armature, name):
 
     # Set rotation mode
     bpy.ops.object.mode_set(mode='POSE')
-    armature.pose.bones[name].rotation_mode = 'XYZ'
+    armature.pose.bones[name].rotation_mode = 'XZY'
 
     return b
 

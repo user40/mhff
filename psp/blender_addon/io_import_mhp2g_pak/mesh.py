@@ -2,7 +2,6 @@ import bpy
 import bmesh
 from collections import defaultdict
 from itertools import chain
-from mathutils import Vector
 from structures import MeshData, SubMeshInfo
 import names
 
@@ -19,7 +18,7 @@ def create(meshes_data: list[MeshData], name):
 
 
 def create_mesh(mesh_data, name):
-    data = mesh_data.to_blender_coord(scale=0.01)
+    data = mesh_data.to_blender_coord()
 
     # Create a mesh and a mesh obj
     me = bpy.data.meshes.new(name)
