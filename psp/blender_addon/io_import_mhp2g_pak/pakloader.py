@@ -41,6 +41,10 @@ def load_pak(filepath):
         for id, action_data in animation_data.items():
             action.create(action_data, id, skelton_data, name)
 
+    bpy.context.scene.frame_start = 0
+    bpy.context.scene.render.fps = 60
+    bpy.context.scene.render.fps_base = 2
+
 
 def get_name(filepath):
     # TODO
