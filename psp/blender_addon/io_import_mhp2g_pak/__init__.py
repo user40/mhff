@@ -14,7 +14,7 @@ import pakloader
 bl_info = {
     "name": "Import Monster Hunter Portable 2G pak",
     "author": "Gahaku",
-    "version": (1, 0, 5),
+    "version": (1, 0, 0),
     "blender": (2, 80, 0),
     "location": "File > Import > MHP pak (.pak)",
     "description": "Imports MHP pak",

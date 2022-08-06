@@ -1,8 +1,8 @@
 import struct
+from numpy import log2
 from mathutils import Vector
 
 '''ゲーム内の座標をBlender用の座標に変換する'''
-
 RATIO = 0.01
 
 
@@ -106,3 +106,17 @@ class Memory:
 
 class OutOfRangeError(Exception):
     pass
+
+
+def entropy(array: bytes):
+    histgram = [0] * 0x100
+    for b in array:
+        histgram[b] = histgram[b] + 1
+    size = len(array)
+    entropy = 0
+    for i in range(0x100):
+        p = histgram[i]/size
+        if p == 0:
+            continue
+        entropy -= p*log2(p)
+    return entropy

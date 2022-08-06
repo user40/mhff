@@ -1,12 +1,16 @@
 import bpy
 import names
+from tmh import Tmh
 
 
-def create(texture_data, name):
+def create(tmh, name):
+    texture_data = Tmh(tmh).read()
     materials = []
     for i, image in enumerate(texture_data):
         image.name = names.image(name, i)
-        mat = bpy.data.materials.new(name=names.material(name, i))
+        mat = bpy.data.materials.get(names.material(name, i))
+        if not mat:
+            mat = bpy.data.materials.new(name=names.material(name, i))
         mat.use_nodes = True
         bsdf = mat.node_tree.nodes["Principled BSDF"]
         bsdf.inputs['Specular'].default_value = 0

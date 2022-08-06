@@ -1,15 +1,12 @@
 import bpy
 import pathlib
-from pak import Pak
+from pak import Pak, FileType
 from pak0 import Pak0
-from pmo import Pmo
-from tmh import Tmh
 from pak3 import Pak3
 import armature
 import action
 import material
 import mesh
-from itertools import product
 
 
 def load_pak(filepath):
@@ -17,29 +14,31 @@ def load_pak(filepath):
     outpath = ''
 
     pak = Pak(filepath)
-    pak0 = pak.get_byte_streme(0)
-    pmo = pak.get_byte_streme(1)
-    tmh = pak.get_byte_streme(2)
-    pak3 = pak.get_byte_streme(3)
-
-    skelton_data = Pak0(pak0).read()
-    mesh_data = Pmo(pmo).read()
-    texture_data = Tmh(tmh).read()
-    animation_data = Pak3(pak3).read()
-
-    materials = material.create(texture_data, name)
-    meshes = mesh.create(mesh_data, name)
-
-    if skelton_data:
-        amt = armature.create(skelton_data, name)
-        for mesh_ in meshes:
-            mesh_.modifiers.new('Armature', type='ARMATURE')
-            mesh_.modifiers["Armature"].object = amt
-            mesh_.parent = amt
-
-    if animation_data:
-        for id, action_data in animation_data.items():
-            action.create(action_data, id, skelton_data, name)
+    meshes = []
+    skelton_data = None
+    animation_data = None
+    i, j, k, l = 0, 0, 0, 0
+    for type_, file in pak.get_all_byte_stremes():
+        print(type_)
+        if type_ == FileType.PAK0:
+            skelton_data = Pak0(file).read()
+            amt = armature.create(skelton_data, name + f'{i}')
+            for mesh_ in meshes:
+                mesh_.modifiers.new('Armature', type='ARMATURE')
+                mesh_.modifiers["Armature"].object = amt
+                mesh_.parent = amt
+            i = i + 1
+        elif type_ == FileType.PMO:
+            meshes = mesh.create(file, name + f'{j}')
+            j = j + 1
+        elif type_ == FileType.TMH:
+            material.create(file, name + f'{k}')
+            k = k + 1
+        elif type_ == FileType.PAK3:
+            animation_data = Pak3(file).read()
+            for id, action_data in animation_data.items():
+                action.create(action_data, id, skelton_data, name + f'{l}')
+            l = l + 1
 
     bpy.context.scene.frame_start = 0
     bpy.context.scene.render.fps = 60

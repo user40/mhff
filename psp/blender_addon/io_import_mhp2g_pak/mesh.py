@@ -2,11 +2,14 @@ import bpy
 import bmesh
 from collections import defaultdict
 from itertools import chain
+import io
+from pmo import Pmo
 from structures import MeshData, SubMeshInfo
 import names
 
 
-def create(meshes_data: list[MeshData], name):
+def create(pmo: io.BytesIO, name):
+    meshes_data = Pmo(pmo).read()
     mesh_groups = defaultdict(list)
     for i, m in enumerate(meshes_data):
         for j, submesh in enumerate(m.mesh):
@@ -40,7 +43,11 @@ def create_mesh(mesh_data, name):
 
 def set_material(obj, material, name):
     # Set material
-    obj.active_material = bpy.data.materials[names.material(name, material)]
+    mat_name = names.material(name, material)
+    mat = bpy.data.materials.get(mat_name)
+    if not mat:
+        mat = bpy.data.materials.new(name=mat_name)
+    obj.active_material = mat
     return obj
 
 
@@ -60,7 +67,6 @@ TOTAL_WEIGHT = 128
 def join_meshes(mesh_groups, name):
     result = []
     for id, meshes in mesh_groups.items():
-        print(id, meshes)
         ctx = bpy.context.copy()
         ctx['active_object'] = meshes[0]
         ctx['selected_editable_objects'] = meshes

@@ -6,7 +6,7 @@ class Pak0:
     def __init__(self, streme):
         self.bin = Memory.from_bytes(streme.read())
 
-    def read(self):
+    def read(self) -> SkeltonData:
         joint_count = self.joint_count()
         adr = self.first_joint_offset()
         joint_data = []
