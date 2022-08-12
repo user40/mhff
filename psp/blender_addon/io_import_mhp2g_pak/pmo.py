@@ -62,7 +62,7 @@ class Pmo:
         meshes_data = []
         bone = [0] * 8
         for i in range(pmo_header[5]):
-            pmo.seek(pmo_header[7] + i * 0x18)
+            pmo.seek(pmo_header[7] + i * 0x30)
             mesh_header = struct.unpack('8f2I4H', pmo.read(0x30))
             scale = mesh_header[:3]
             mesh, mesh_groups, bones, materials = [], [], [], []
