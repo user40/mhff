@@ -225,8 +225,8 @@ def convert_mh2_pmo(pmo, obj, second=None):
     for i in range(pmo_header[5]):
         mesh = []
         obj.write('g mesh{:02d}\n'.format(i))
-        pmo.seek(pmo_header[7] + i * 0x18)
-        mesh_header = struct.unpack('2f2I4H', pmo.read(0x18))
+        pmo.seek(pmo_header[7] + i * 0x20)
+        mesh_header = struct.unpack('2f2I4H2I', pmo.read(0x20))
         for j in range(mesh_header[6]):
             pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
             vertex_group_header = struct.unpack('2BH3I', pmo.read(0x10))

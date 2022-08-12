@@ -12,17 +12,20 @@ from utils import Memory
 class Pak3:
     def __init__(self, streme):
         self.mem = Memory.from_bytes(streme.read())
+        self.addresses = self.get_addresses()
         pass
 
     def read(self) -> dict[int, MHAction]:
-        keys = self.keys()
         actions = {}
-        for idx in keys:
+        for idx in self.keys():
             actions[idx] = self.get(idx)
         return actions
 
     def keys(self) -> list[int]:
         '''pak3ファイルの有効なインデックスの一覧を取得する。'''
+        return self.addresses.keys()
+    
+    def get_addresses(self) -> dict[int, int]:
         # ポインタテーブルたちのオフセットを読み出し
         counts = []
         offsets = []
@@ -31,26 +34,31 @@ class Pak3:
             count = self.mem.get_u32(adr)
             offset = self.mem.get_u32(adr+4)
             if count == 0:
+                end = offset
                 break
             counts.append(count)
             offsets.append(offset)
             adr = adr + 8
+        
+        # 整合性チェック
+        if end != offsets[-1] + counts[-1]*4:
+            raise Exception
 
-        keys = []
         # 実際のインデックスを探索
-        for i, offset in enumerate(offsets):
-            for j in range(0, counts[i]):
-                if self.mem.get_u32(offset+4*j) != 0xFFFFFFFF:
-                    keys.append(100*i+j)
+        addresses = {}
+        index = 0
+        for count, offset in zip(counts, offsets):
+            for j in range(0, count):
+                address = self.mem.get_u32(offset+4*j)
+                if address != 0xFFFFFFFF:
+                    addresses[index] = address
+                index = index + 1
 
-        return keys
+        return addresses
 
     def get(self, index: int) -> MHAction:
         '''インデックスを指定してアクションを取得する。'''
-        i = index // 100
-        j = index % 100
-        offset = self.mem.get_u32(i*8+4)
-        address = self.mem.get_u32(offset+4*j)
+        address = self.addresses[index]
 
         if address == 0xFFFFFFFF or address == None:
             return None

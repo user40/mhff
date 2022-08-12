@@ -16,8 +16,7 @@ class Pmo:
         if type == b'pmo\x00' and version == b'1.0\x00':
             return self.read_mh2()
         elif type == b'pmo\x00' and version == b'102\x00':
-            # load_pmo_mh3(pmo)
-            raise ValueError('Unsupported PMO file')
+            return self.read_mh3()
         else:
             raise ValueError('Invalid PMO file')
 
@@ -52,6 +51,39 @@ class Pmo:
                 mesh_group = struct.unpack('B', pmo.read(1))[0]
                 mesh_groups.append(mesh_group)
                 pmo.seek(pmo_header[11] + mesh_group * 0x10)
+                material = struct.unpack('4I', pmo.read(16))[2]
+                materials.append(material)
+            meshes_data.append(MeshData(mesh, mesh_groups, bones, materials))
+        return meshes_data
+
+    def read_mh3(self):
+        pmo = self.pmo
+        pmo_header = struct.unpack('I4f2H8I', pmo.read(0x38))
+        meshes_data = []
+        bone = [0] * 8
+        for i in range(pmo_header[5]):
+            pmo.seek(pmo_header[7] + i * 0x18)
+            mesh_header = struct.unpack('8f2I4H', pmo.read(0x30))
+            scale = mesh_header[:3]
+            mesh, mesh_groups, bones, materials = [], [], [], []
+            for j in range(mesh_header[12]):
+                pmo.seek(pmo_header[8] + ((mesh_header[13] + j) * 0x10))
+                sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
+                # submesh
+                pmo.seek(pmo_header[12] + sub_mesh_header[3])
+                sub_mesh = self.run_ge(scale)
+                mesh.append(sub_mesh)
+                # bone
+                pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
+                for _ in range(sub_mesh_header[1]):
+                    k, l = struct.unpack('2B', pmo.read(0x2))
+                    bone[k] = l
+                bones.append(bone.copy())
+                # material
+                pmo.seek(pmo_header[9] + mesh_header[11] + sub_mesh_header[0])
+                mesh_group = struct.unpack('B', pmo.read(1))[0]
+                mesh_groups.append(mesh_group)
+                pmo.seek(pmo_header[11] + (mesh_header[11] + sub_mesh_header[0]) * 16)
                 material = struct.unpack('4I', pmo.read(16))[2]
                 materials.append(material)
             meshes_data.append(MeshData(mesh, mesh_groups, bones, materials))

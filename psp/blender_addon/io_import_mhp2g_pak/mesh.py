@@ -27,7 +27,9 @@ def create_mesh(mesh_data, name):
     me = bpy.data.meshes.new(name)
     obj = bpy.data.objects.new(name, me)
     bpy.context.collection.objects.link(obj)
-    me.from_pydata(list(data.vertices.values()), [], data.faces)
+    index_max = max(data.vertices.keys())
+    vertices = [data.vertices[i] for i in range(1 + index_max)]
+    me.from_pydata(vertices, [], data.faces)
 
     # Set normal
     me.normals_split_custom_set_from_vertices(list(data.normals.values()))
