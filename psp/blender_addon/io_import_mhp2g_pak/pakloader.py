@@ -46,6 +46,7 @@ def load_pak(filepath):
     
 
 def load_files(name, pak0=None, pmo=None, tmh=None, pak3=None, is_third=False):
+    #version = Version.SECOND_G
     version = Version.THIRD
     meshes = []
     if pmo:
@@ -63,7 +64,7 @@ def load_files(name, pak0=None, pmo=None, tmh=None, pak3=None, is_third=False):
         if pak3:
             animation_data = Pak3(pak3, version).read()
             for id, action_data in animation_data.items():
-                action.create(action_data, id, skelton_data, name)
+                action.create(action_data, id, skelton_data, name, version)
 
 
     bpy.context.scene.frame_start = 0

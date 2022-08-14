@@ -3,12 +3,19 @@ import pak3
 from structures import (
     Joint,
     MHAction,
-    SkeltonData
+    SkeltonData,
+    Version,
 )
 import names
 
 
-def create(action_data: MHAction, action_id: int, skelton_data: SkeltonData, name: str):
+def create(action_data: MHAction, action_id: int, skelton_data: SkeltonData, name: str, version: Version):
+    if version == Version.SECOND_G:
+        create_2G(action_data, action_id, skelton_data, name)
+    elif version == Version.THIRD:
+        create_3(action_data, action_id, skelton_data, name)
+
+def create_2G(action_data: MHAction, action_id: int, skelton_data: SkeltonData, name: str):
     action = bpy.data.actions.new(names.action(name, action_id))
     action.use_fake_user = True
 
@@ -24,6 +31,16 @@ def create(action_data: MHAction, action_id: int, skelton_data: SkeltonData, nam
             set_fcurves(action, action_data.joints[idx], joint.idx)
             idx = idx + 1
 
+def create_3(action_data: MHAction, action_id: int, skelton_data: SkeltonData, name: str):
+    action = bpy.data.actions.new(names.action(name, action_id))
+    action.use_fake_user = True
+
+    idx = 0
+    for joint in skelton_data.iter(0):
+        if joint.name.startswith("CL-") or joint.name.startswith("OP-"):
+            continue
+        set_fcurves(action, action_data.joints[idx], joint.idx)
+        idx = idx + 1
 
 def set_fcurves(action, joint_data: Joint, bone_idx):
     for c in joint_data.channels:
