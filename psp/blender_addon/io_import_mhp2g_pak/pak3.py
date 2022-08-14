@@ -1,3 +1,4 @@
+from enum import Enum
 from struct import unpack
 from structures import (
     ChannelFlag,
@@ -5,13 +6,85 @@ from structures import (
     Fcurve,
     Joint,
     MHAction,
+    Version,
 )
 from utils import Memory
 
 
+# キーフレームひとつのサイズ(バイト)
+KEYFRAME_SIZE = 8
+
+# 単位系換算用定数
+DISTANCE_CONVERSION_COEFF = 0.0625
+ANGLE_CONVERSION_COEFF = 0.0003834952076431364
+
+# fcurve_container型のフィールドのオフセット
+OFFSET_FLAG = 0
+OFFSET_COUNT = 0x4
+OFFSET_SIZE = 0x8
+# fcurve_container型のヘッダサイズ
+HEADER_SIZE = 0xc
+# fcurve_container型のルートのヘッダサイズ
+ROOT_HEADER_SIZE = 0x14
+
+
+class ContainerType(Enum):
+    ACTION = 0
+    JOINT = 1
+    FCURVE = 2
+    
+    def child(self):
+        return ContainerType(self.value + 1)
+
+
+OFFSET_2G = {
+    ContainerType.ACTION: dict(
+        flag=(0, 2),
+        count=(4, 4),
+        size=(8, 4),
+        contents=0x14,
+    ),
+    ContainerType.JOINT: dict(
+        flag=(0, 2),
+        count=(4, 4),
+        size=(8, 4),
+        contents=0xc,
+    ),
+    ContainerType.FCURVE: dict(
+        flag=(0, 2),
+        count=(4, 4),
+        size=(8, 4),
+        contents=0xc,
+    ),
+}
+
+OFFSET_3 = {
+    ContainerType.ACTION: dict(
+        count=(0, 4),
+        size=(4, 4),
+        contents=0x10,
+    ),
+    ContainerType.JOINT: dict(
+        count=(0, 2),
+        size=(2, 2),
+        contents=4,
+    ),
+    ContainerType.FCURVE: dict(
+        flag=(0, 2),
+        count=(2, 2),
+        size=(4, 2),
+        contents=8,
+    ),
+}
+
+OFFSET = {Version.SECOND_G: OFFSET_2G, Version.THIRD: OFFSET_3}
+
+
 class Pak3:
-    def __init__(self, streme):
+    def __init__(self, streme, version: Version):
         self.mem = Memory.from_bytes(streme.read())
+        self.version = version
+        self.offset = OFFSET[version]
         self.addresses = self.get_addresses()
         pass
 
@@ -24,7 +97,7 @@ class Pak3:
     def keys(self) -> list[int]:
         '''pak3ファイルの有効なインデックスの一覧を取得する。'''
         return self.addresses.keys()
-    
+
     def get_addresses(self) -> dict[int, int]:
         # ポインタテーブルたちのオフセットを読み出し
         counts = []
@@ -39,7 +112,7 @@ class Pak3:
             counts.append(count)
             offsets.append(offset)
             adr = adr + 8
-        
+
         # 整合性チェック
         if end != offsets[-1] + counts[-1]*4:
             raise Exception
@@ -65,53 +138,53 @@ class Pak3:
 
         return self.action(address)
 
-    def get_flag(self, address: int) -> ChannelFlag:
-        return ChannelFlag(self.mem.get_u16(address + OFFSET_FLAG))
+    def get_flag(self, address: int, type: ContainerType) -> ChannelFlag:
+        offset, size = self.offset[type]['flag']
+        return ChannelFlag(self.mem.get_unsigned(address + offset, size))
 
-    def get_count(self, address: int) -> int:
-        return self.mem.get_u32(address + OFFSET_COUNT)
+    def get_count(self, address: int, type: ContainerType) -> int:
+        offset, size = self.offset[type]['count']
+        return self.mem.get_unsigned(address + offset, size)
 
-    def get_size(self, address: int) -> int:
-        return self.mem.get_u32(address + OFFSET_SIZE)
+    def get_size(self, address: int, type: ContainerType) -> int:
+        offset, size = self.offset[type]['size']
+        return self.mem.get_unsigned(address + offset, size)
 
-    def get_next(self, address: int) -> int:
-        size = self.mem.get_u32(address + OFFSET_SIZE)
-        return address + size
+    def get_next(self, address: int, type: ContainerType) -> int:
+        return address + self.get_size(address, type)
 
-    def get_file_addresses(self, address: int, is_root=False) -> list[int]:
-        if is_root:
-            header_size = ROOT_HEADER_SIZE
-        else:
-            header_size = HEADER_SIZE
-
-        file_num = self.get_count(address)
+    def get_file_addresses(self, address: int, type: ContainerType) -> list[int]:
+        header_size = self.offset[type]['contents']
+        
+        file_num = self.get_count(address, type)
         ptr = address + header_size
         adrs = []
         for i in range(0, file_num):
             adrs.append(ptr)
-            ptr = self.get_next(ptr)
+            ptr = self.get_next(ptr, type.child())
 
         return adrs
 
     def action(self, address: int) -> MHAction:
         joints = []
-        for adr in self.get_file_addresses(address, is_root=True):
+        for adr in self.get_file_addresses(address, ContainerType.ACTION):
             joints.append(self.joint(adr))
         return MHAction(joints)
 
     def joint(self, address: int) -> Joint:
         fcurves = []
-        for adr in self.get_file_addresses(address):
+        for adr in self.get_file_addresses(address, ContainerType.JOINT):
             fcurves.append(self.fcurve(adr))
         return Joint(fcurves)
 
     def fcurve(self, address: int) -> Fcurve:
-        flag = self.get_flag(address)
-        count = self.get_count(address)
-
+        flag = self.get_flag(address, ContainerType.FCURVE)
+        count = self.get_count(address, ContainerType.FCURVE)
+        header_size = self.offset[ContainerType.FCURVE]['contents']
+        
         keyframes = []
         for i in range(count):
-            adr = address + HEADER_SIZE + KEYFRAME_SIZE * i
+            adr = address + header_size + KEYFRAME_SIZE * i
             keyframes.append(self.keyframe(adr, flag))
 
         return Fcurve(flag, keyframes)
@@ -132,20 +205,3 @@ class Pak3:
             return ANGLE_CONVERSION_COEFF
         if flag in ChannelFlag.TRANSLATION:
             return DISTANCE_CONVERSION_COEFF
-
-
-# キーフレームひとつのサイズ(バイト)
-KEYFRAME_SIZE = 8
-
-# 単位系換算用定数
-DISTANCE_CONVERSION_COEFF = 0.0625
-ANGLE_CONVERSION_COEFF = 0.0003834952076431364
-
-# fcurve_container型のフィールドのオフセット
-OFFSET_FLAG = 0
-OFFSET_COUNT = 0x4
-OFFSET_SIZE = 0x8
-# fcurve_container型のヘッダサイズ
-HEADER_SIZE = 0xc
-# fcurve_container型のルートのヘッダサイズ
-ROOT_HEADER_SIZE = 0x14

@@ -7,7 +7,7 @@ import armature
 import action
 import material
 import mesh
-
+from structures import Version
 
 def load_pak(filepath):
     name = get_name(filepath)
@@ -45,7 +45,8 @@ def load_pak(filepath):
     bpy.context.scene.render.fps_base = 2
     
 
-def load_files(name, pak0=None, pmo=None, tmh=None, pak3=None):
+def load_files(name, pak0=None, pmo=None, tmh=None, pak3=None, is_third=False):
+    version = Version.THIRD
     meshes = []
     if pmo:
         meshes = mesh.create(pmo, name)
@@ -60,7 +61,7 @@ def load_files(name, pak0=None, pmo=None, tmh=None, pak3=None):
             mesh_.parent = amt
         
         if pak3:
-            animation_data = Pak3(pak3).read()
+            animation_data = Pak3(pak3, version).read()
             for id, action_data in animation_data.items():
                 action.create(action_data, id, skelton_data, name)
 

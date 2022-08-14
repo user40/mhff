@@ -5,6 +5,11 @@ from collections.abc import Iterator
 from utils import to_blender_location
 
 
+class Version(Enum):
+    SECOND_G = 0,
+    THIRD = 1,
+
+
 class SkeltonData(list):
     '''A list of JointData'''
 
@@ -55,6 +60,7 @@ class JointData:
     location: int
     # ffffffff: int
     subskelton_id: int
+    name: str
 
 
 class ChannelFlag(IntFlag):
@@ -106,7 +112,7 @@ class SubMeshInfo:
     faces: list
 
     def to_blender_coord(self):
-        vs = {k: to_blender_location(v)  for k, v in self.vertices.items()}
+        vs = {k: to_blender_location(v) for k, v in self.vertices.items()}
         ns = {k: to_blender_location(n) for k, n in self.vertices.items()}
         return SubMeshInfo(vs, ns, self.uvs, self.colors, self.weights, self.faces)
 

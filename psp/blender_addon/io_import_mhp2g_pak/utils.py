@@ -103,8 +103,26 @@ class Memory:
         b = self.get_slice_at(address, 4*4*4)
         return struct.unpack('ffffffffffffffff', b)
 
+    def get_unsigned(self, address, size):
+        if size == 1:
+            return self.get_u8(address)
+        elif size == 2:
+            return self.get_u16(address)
+        elif size == 4:
+            return self.get_u32(address)
+        else:
+            raise InvalidDataSizeError
+
+    def get_str(self, address, length):
+        b = self.get_slice_at(address, length)
+        return b.split(b'\0')[0].decode("utf-8", "ignore")
+
 
 class OutOfRangeError(Exception):
+    pass
+
+
+class InvalidDataSizeError(Exception):
     pass
 
 

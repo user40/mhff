@@ -33,7 +33,8 @@ class Pak0:
         angle = self.bin.get_float_vec3(adr + OFFSETS["angle"])
         location = self.bin.get_float_vec3(adr + OFFSETS["location"])
         subskelton_id = self.bin.get_i32(adr + OFFSETS["subskelton_id"])
-        return JointData(idx, parentt_idx, child_idx, sibling_idx, scale, angle, location, subskelton_id)
+        name = self.bin.get_str(adr + OFFSETS["name"], 8)
+        return JointData(idx, parentt_idx, child_idx, sibling_idx, scale, angle, location, subskelton_id, name)
 
 
 OFFSETS = dict(
@@ -54,4 +55,5 @@ OFFSETS = dict(
     angle=0x2c,
     location=0x3c,
     subskelton_id=0x50,
+    name=0x54,
 )

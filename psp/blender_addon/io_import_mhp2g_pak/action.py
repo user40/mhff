@@ -18,6 +18,9 @@ def create(action_data: MHAction, action_id: int, skelton_data: SkeltonData, nam
     idx = 0
     for joint in skelton_data.iter(root_idx):
         if joint.subskelton_id == subskelton_id or joint == 0xffffffff:
+            
+            print(joint.idx)
+            
             set_fcurves(action, action_data.joints[idx], joint.idx)
             idx = idx + 1
 

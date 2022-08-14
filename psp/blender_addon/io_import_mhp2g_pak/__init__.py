@@ -23,6 +23,7 @@ bl_info = {
 
 
 class PakFileInputs(bpy.types.PropertyGroup):
+    is_3rd: BoolProperty()
     name: StringProperty()
     use_pak_pak0: BoolProperty()
     use_pak_pmo: BoolProperty()
@@ -182,7 +183,7 @@ class IMPORT_OT_pak(bpy.types.Operator):
         if inputs.pak3_path:
             pak3 = open(inputs.pak3_path, 'rb')
         
-        pakloader.load_files(inputs.name, pak0, pmo, tmh, pak3)
+        pakloader.load_files(inputs.name, pak0, pmo, tmh, pak3, inputs.is_3rd)
         return {'FINISHED'}
 
 
