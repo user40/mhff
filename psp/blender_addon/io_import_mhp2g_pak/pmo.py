@@ -1,4 +1,5 @@
 import array
+import io
 import struct
 import mathutils
 from structures import (
@@ -8,8 +9,11 @@ from structures import (
 
 
 class Pmo:
-    def __init__(self, streme) -> None:
-        self.pmo = streme
+    def __init__(self, stream) -> None:
+        self.pmo = stream
+        
+    def extend(self, stream) -> None:
+        self.pmo = io.BytesIO(self.pmo.read() + stream.read())
 
     def read(self) -> list[MeshData]:
         type, version = struct.unpack('4s4s', self.pmo.read(8))

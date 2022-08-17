@@ -30,10 +30,6 @@ class Tmh:
                     new.extend(clut_data[p*4:p*4+4])
                 pixel_data = bytes(new)
             pixel_data = deblock(pixel_header[2], pixel_header[3], pixel_data)
-            image_format = 'RGBA'
-            if pixel_header[2] > 7:
-                image_format = 'BGRA'
-
             pixel_data = np.frombuffer(pixel_data, dtype='u1').astype('f8')
             pixel_data = pixel_data / 256.0
             image = bpy.data.images.new(
@@ -113,7 +109,9 @@ def decode(mode, data):
             else:
                 c.append(
                     bytes([(c[0][0]+c[1][0])//2, (c[0][1]+c[1][1])//2, (c[0][2]+c[1][2])//2, 255]))
-                c.append(b'\x00\x00\x00\xff')
+                c.append(b'\x00\x00\x00\x00')
+            # BGRA -> RGBA
+            c = [[x[2],x[1],x[0],x[3]] for x in c]
             for d in data[i:i+4]:
                 new.extend(c[d & 3])
                 new.extend(c[d >> 2 & 3])
