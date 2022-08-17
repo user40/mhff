@@ -84,8 +84,7 @@ class Pmo:
                     bone[k] = l
                 bones.append(bone.copy())
                 # material
-                pmo.seek(pmo_header[9] + mesh_header[11] + sub_mesh_header[0])
-                mesh_group = struct.unpack('B', pmo.read(1))[0]
+                mesh_group = mesh_header[11] + sub_mesh_header[0]
                 mesh_groups.append(mesh_group)
                 pmo.seek(pmo_header[11] + (mesh_header[11] + sub_mesh_header[0]) * 16)
                 material = struct.unpack('4I', pmo.read(16))[2]

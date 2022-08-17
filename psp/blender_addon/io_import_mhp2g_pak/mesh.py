@@ -1,14 +1,12 @@
 import bpy
-import bmesh
 from collections import defaultdict
 from itertools import chain
 import io
 from pmo import Pmo
-from structures import MeshData, SubMeshInfo
 import names
 
 
-def create(pmo: io.BytesIO, name):
+def create(pmo: io.BytesIO, name: str):
     meshes_data = Pmo(pmo).read()
     mesh_groups = defaultdict(list)
     for i, m in enumerate(meshes_data):
