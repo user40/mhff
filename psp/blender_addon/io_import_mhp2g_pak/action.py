@@ -86,4 +86,7 @@ channel_data = dict([
     (pak3.ChannelFlag.TRANSLATION_X, ('location', 0, 0.01)),
     (pak3.ChannelFlag.TRANSLATION_Y, ('location', 2, 0.01)),
     (pak3.ChannelFlag.TRANSLATION_Z, ('location', 1, -0.01)),
+    (pak3.ChannelFlag.SCALE2_X, ('scale', 0, 1.0)),
+    (pak3.ChannelFlag.SCALE2_Y, ('scale', 2, 1.0)),
+    (pak3.ChannelFlag.SCALE2_Z, ('scale', 1, 1.0)),
 ])

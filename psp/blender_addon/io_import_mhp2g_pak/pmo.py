@@ -1,4 +1,5 @@
 import array
+from dataclasses import dataclass
 import io
 import struct
 import mathutils
@@ -8,10 +9,86 @@ from structures import (
 )
 
 
+@dataclass
+class FileHeader:
+    file_size: int
+    scale_dummy: float
+    scale_x: float
+    scale_y: float
+    scale_z: float
+    mesh_count: int
+    mesh_group_count: int
+    mesh_header_tbl: int
+    submesh_header_tbl: int
+    mesh_group_tbl: int
+    ref_bone_tbl: int
+    material_tbl: int
+    submeshes: int
+
+    @classmethod
+    def from_stream(cls, stream):
+        s = list(struct.unpack('I4f2H8I', stream.read(0x38)))
+        return cls(*(s[:13]))
+
+    def scale(self):
+        return (self.scale_x, self.scale_y, self.scale_z)
+
+
+@dataclass
+class MeshHeader100:
+    scale_u: float
+    scale_v: float
+    offset_u: float
+    offset_v: float
+    render_flag: int
+    render_command: int
+    unk_count: int
+    unk_first_index: int
+    submesh_count: int
+    first_submesh_index: int
+
+    @classmethod
+    def from_stream(cls, stream):
+        s = struct.unpack('4f2I4H', stream.read(0x18))
+        return cls(*s)
+
+
+@dataclass
+class MeshHeader102:
+    scale_x: float
+    scale_y: float
+    scale_z: float
+    dummy: float
+    scale_u: float
+    scale_v: float  # 5
+    offset_u: float
+    offset_v: float
+    render_flag: int
+    render_command: int
+    unk_count: int  # 10
+    unk_first_index: int
+    submesh_count: int
+    first_submesh_index: int
+
+    @classmethod
+    def from_stream(cls, stream):
+        s = struct.unpack('8f2I4H', stream.read(0x30))
+        return cls(*s)
+
+    def scale(self):
+        return (self.scale_x, self.scale_y, self.scale_z)
+
+    def uv_scale(self):
+        return (self.scale_x, self.scale_y, self.scale_z)
+
+    def uv_offset(self):
+        return (self.offset_u, self.offset_v)
+
+
 class Pmo:
     def __init__(self, stream) -> None:
         self.pmo = stream
-        
+
     def extend(self, stream) -> None:
         self.pmo = io.BytesIO(self.pmo.read() + stream.read())
 
@@ -26,35 +103,34 @@ class Pmo:
 
     def read_mh2(self):
         pmo = self.pmo
-        pmo_header = struct.unpack('I4f2H8I', pmo.read(0x38))
-        scale = mathutils.Vector(pmo_header[2:5])
+        pmo_header = FileHeader.from_stream(pmo)
+        scale = (pmo_header.scale_x, pmo_header.scale_y, pmo_header.scale_z)
         meshes_data = []
         bone = [0] * 8
-        for i in range(pmo_header[5]):
-            pmo.seek(pmo_header[7] + i * 0x18)
+        for i in range(pmo_header.mesh_count):
+            pmo.seek(pmo_header.mesh_header_tbl + i * 0x18)
             mesh_header = struct.unpack('2f2I4H', pmo.read(0x18))
             mesh, mesh_groups, bones, materials = [], [], [], []
             for j in range(mesh_header[6]):
-                pmo.seek(pmo_header[8] + ((mesh_header[7] + j) * 0x10))
+                pmo.seek(pmo_header.submesh_header_tbl +
+                         ((mesh_header[7] + j) * 0x10))
                 sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
                 # submesh
-                pmo.seek(pmo_header[12] + sub_mesh_header[3])
+                pmo.seek(pmo_header.submeshes + sub_mesh_header[3])
                 sub_mesh = self.run_ge(scale)
                 mesh.append(sub_mesh)
                 # bone
-                pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
+                pmo.seek(pmo_header.ref_bone_tbl + sub_mesh_header[2] * 0x2)
                 for _ in range(sub_mesh_header[1]):
                     k, l = struct.unpack('2B', pmo.read(0x2))
                     bone[k] = l
                 bones.append(bone.copy())
                 # material
-                #material = struct.unpack('4I', pmo.read(16))[2]
-                # pmo_header[11] -> mesh_group_tbl
-                #
-                pmo.seek(pmo_header[9] + mesh_header[5] + sub_mesh_header[0])
+                pmo.seek(pmo_header.mesh_group_tbl +
+                         mesh_header[5] + sub_mesh_header[0])
                 mesh_group = struct.unpack('B', pmo.read(1))[0]
                 mesh_groups.append(mesh_group)
-                pmo.seek(pmo_header[11] + mesh_group * 0x10)
+                pmo.seek(pmo_header.material_tbl + mesh_group * 0x10)
                 material = struct.unpack('4I', pmo.read(16))[2]
                 materials.append(material)
             meshes_data.append(MeshData(mesh, mesh_groups, bones, materials))
@@ -67,15 +143,16 @@ class Pmo:
         bone = [0] * 8
         for i in range(pmo_header[5]):
             pmo.seek(pmo_header[7] + i * 0x30)
-            mesh_header = struct.unpack('8f2I4H', pmo.read(0x30))
-            scale = mesh_header[:3]
+            mesh_header = MeshHeader102.from_stream(pmo)
             mesh, mesh_groups, bones, materials = [], [], [], []
-            for j in range(mesh_header[12]):
-                pmo.seek(pmo_header[8] + ((mesh_header[13] + j) * 0x10))
+            for j in range(mesh_header.submesh_count):
+                pmo.seek(
+                    pmo_header[8] + ((mesh_header.first_submesh_index + j) * 0x10))
                 sub_mesh_header = struct.unpack('2BH3I', pmo.read(0x10))
                 # submesh
                 pmo.seek(pmo_header[12] + sub_mesh_header[3])
-                sub_mesh = self.run_ge(scale)
+                sub_mesh = self.run_ge(
+                    mesh_header.scale, mesh_header.uv_scale, mesh_header.uv_offset)
                 mesh.append(sub_mesh)
                 # bone
                 pmo.seek(pmo_header[10] + sub_mesh_header[2] * 0x2)
@@ -84,15 +161,16 @@ class Pmo:
                     bone[k] = l
                 bones.append(bone.copy())
                 # material
-                mesh_group = mesh_header[11] + sub_mesh_header[0]
+                mesh_group = mesh_header.unk_first_index + sub_mesh_header[0]
                 mesh_groups.append(mesh_group)
-                pmo.seek(pmo_header[11] + (mesh_header[11] + sub_mesh_header[0]) * 16)
+                pmo.seek(pmo_header[11] +
+                         (mesh_header.unk_first_index + sub_mesh_header[0]) * 16)
                 material = struct.unpack('4I', pmo.read(16))[2]
                 materials.append(material)
             meshes_data.append(MeshData(mesh, mesh_groups, bones, materials))
         return meshes_data
 
-    def run_ge(self, scale=(1, 1, 1)):
+    def run_ge(self, scale=(1, 1, 1), uv_scale=(1, 1), uv_offset=(0, 0)):
         pmo = self.pmo
         file_address = pmo.tell()
         index_offset = 0
@@ -158,8 +236,10 @@ class Pmo:
                         colors[i + index_offset] = color_trans(vertex.pop())
                     if texture_trans is not None:
                         texture = mathutils.Vector()
-                        texture.y = vertex.pop() / texture_trans
-                        texture.x = vertex.pop() / texture_trans
+                        texture.y = vertex.pop() / texture_trans * \
+                            uv_scale[1] + uv_offset[1]
+                        texture.x = vertex.pop() / texture_trans * \
+                            uv_scale[0] + uv_offset[0]
                         uvs[i + index_offset] = texture.to_2d()
                     if weight_trans is not None:
                         weights[i + index_offset] = vertex[:]

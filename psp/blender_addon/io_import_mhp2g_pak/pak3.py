@@ -17,6 +17,7 @@ KEYFRAME_SIZE = 8
 # 単位系換算用定数
 DISTANCE_CONVERSION_COEFF = 0.0625
 ANGLE_CONVERSION_COEFF = 0.0003834952076431364
+SCALE2_CONVERSION_COEFF = 0.00390625
 
 # fcurve_container型のフィールドのオフセット
 OFFSET_FLAG = 0
@@ -201,7 +202,11 @@ class Pak3:
     def conversion_coefficient(self, flag: ChannelFlag) -> float:
         if flag in ChannelFlag.SCALE:
             return DISTANCE_CONVERSION_COEFF
-        if flag in ChannelFlag.EULER:
+        elif flag in ChannelFlag.EULER:
             return ANGLE_CONVERSION_COEFF
-        if flag in ChannelFlag.TRANSLATION:
+        elif flag in ChannelFlag.TRANSLATION:
             return DISTANCE_CONVERSION_COEFF
+        elif flag in ChannelFlag.SCALE2:
+            return SCALE2_CONVERSION_COEFF
+        else:
+            ValueError(flag)

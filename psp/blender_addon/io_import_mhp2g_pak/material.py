@@ -20,7 +20,8 @@ def create(tmh, name):
             bsdf.inputs['Base Color'], texImage.outputs['Color'])
         mat.node_tree.links.new(
             bsdf.inputs['Alpha'], texImage.outputs['Alpha'])
-        mat.blend_method = 'CLIP'
-        mat.shadow_method = 'CLIP'
+        mat.blend_method = 'BLEND'
+        mat.show_transparent_back = False
+        mat.shadow_method = 'NONE'
         materials.append(mat)
     return materials
